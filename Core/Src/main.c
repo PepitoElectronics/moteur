@@ -45,7 +45,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t data [20];
-
+int send_flag;
 
 
 /* USER CODE END PV */
@@ -55,7 +55,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 /* USER CODE BEGIN PFP */
-
+static void MX_GPIO_Init_perso(int type);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -71,12 +71,16 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	//int total_angle = 0;  // Utilisé pour stocker l'angle total parcouru
-	int angle_increment = 360.0 / (2.0 * PAIRES_DE_POLES * 30);// Angle associé à chaque transition des capteurs
+	uint16_t angle_increment = 360.0 / (2.0 * PAIRES_DE_POLES * 30);// Angle associé à chaque transition des capteurs
 	int state_Hal_A;
 	int state_Hal_B;
 	int old_state_Hal_A = 0;
 	int old_state_Hal_B = 0;
-	int total_angle = 0;
+	uint16_t total_angle;
+	uint16_t total_angle_copy;
+
+	uint8_t angle_bit_array [16];
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -101,6 +105,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
   old_state_Hal_A = HAL_GPIO_ReadPin(GPIOA, 9);
   old_state_Hal_B = HAL_GPIO_ReadPin(GPIOA, 8);
+  total_angle = 0;
+  total_angle_copy = 0;
+  HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2, 1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -110,6 +117,40 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  if(send_flag){
+		  if(send_flag == 1){
+			HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2, 0 );
+			total_angle_copy = total_angle;
+			MX_GPIO_Init_perso(1);
+			// Parcours des bits de droite à gauche (du bit 7 au bit 0)
+			for (int i = 15; i >= 0; i--) {
+				// Opération de décalage à droite pour isoler le bit
+				unsigned char bit = (total_angle_copy >> i) & 0x01;
+				angle_bit_array[i]=bit;
+			}
+			//HAL_GPIO_WritePin(GPIOB, 2, angle_bit_array[send_flag-1]);
+		  }
+		  else{
+			  //int test = angle_bit_array[send_flag-2];
+			if(angle_bit_array[send_flag-2] == 1){
+				//int test = angle_bit_array[send_flag-2];
+				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2, 1 );
+			}
+			else{
+				HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2, 0 );
+			}
+		  }
+	  }
+	  else{
+		  HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2, 1);
+	  }
+
+
+	  if(send_flag>21){
+		MX_GPIO_Init_perso(0);
+		send_flag=0;
+		//HAL_GPIO_WritePin(GPIOB,GPIO_PIN_2, 0 );
+	  }
 
 	  state_Hal_A = HAL_GPIO_ReadPin(HALL_A_GPIO_Port, HALL_A_Pin);
 	  /*memset(data,'0',sizeof(data));
@@ -122,8 +163,6 @@ int main(void)
 	  sprintf(data,"%i",state_Hal_B);
 	  HAL_UART_Transmit(&huart2, data, 5, 10);
 	  HAL_UART_Transmit(&huart2, "\n\r", 5, 10);
-
-
 	  HAL_Delay(1000);*/
 
 	  if(state_Hal_A != old_state_Hal_A){
@@ -235,14 +274,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(tx___data_GPIO_Port, tx___data_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(dataout_GPIO_Port, dataout_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : tx___data_Pin */
-  GPIO_InitStruct.Pin = tx___data_Pin;
+  /*Configure GPIO pin : dataout_Pin */
+  GPIO_InitStruct.Pin = dataout_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
-  HAL_GPIO_Init(tx___data_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(dataout_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : HALL_B_Pin HALL_A_Pin */
   GPIO_InitStruct.Pin = HALL_B_Pin|HALL_A_Pin;
@@ -258,16 +297,40 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : clock_master_Pin */
   GPIO_InitStruct.Pin = clock_master_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(clock_master_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI2_3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI2_3_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
+static void MX_GPIO_Init_perso(int type)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
+  GPIO_InitStruct.Pin = clock_master_Pin;
+  if(type==1){
+	  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  }
+  else{
+	  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  }
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(clock_master_GPIO_Port, &GPIO_InitStruct);
+
+}
 /* USER CODE END 4 */
 
 /**

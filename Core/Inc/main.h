@@ -58,14 +58,15 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define tx___data_Pin GPIO_PIN_2
-#define tx___data_GPIO_Port GPIOB
+#define dataout_Pin GPIO_PIN_2
+#define dataout_GPIO_Port GPIOB
 #define HALL_B_Pin GPIO_PIN_8
 #define HALL_B_GPIO_Port GPIOA
 #define HALL_A_Pin GPIO_PIN_9
 #define HALL_A_GPIO_Port GPIOA
 #define clock_master_Pin GPIO_PIN_3
 #define clock_master_GPIO_Port GPIOB
+#define clock_master_EXTI_IRQn EXTI2_3_IRQn
 
 /* USER CODE BEGIN Private defines */
 

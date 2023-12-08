@@ -41,7 +41,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN PV */
-	volatile int bit_counter = 0;
+volatile int bit_counter = 0;
+extern int send_flag;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -139,6 +140,21 @@ void SysTick_Handler(void)
 /* For the available peripheral interrupt handler names,                      */
 /* please refer to the startup file (startup_stm32f0xx.s).                    */
 /******************************************************************************/
+
+/**
+  * @brief This function handles EXTI line 2 and 3 interrupts.
+  */
+void EXTI2_3_IRQHandler(void)
+{
+  /* USER CODE BEGIN EXTI2_3_IRQn 0 */
+	send_flag++;
+	//HAL_GPIO_WritePin(GPIOB, 2, 0);
+  /* USER CODE END EXTI2_3_IRQn 0 */
+  HAL_GPIO_EXTI_IRQHandler(clock_master_Pin);
+  /* USER CODE BEGIN EXTI2_3_IRQn 1 */
+
+  /* USER CODE END EXTI2_3_IRQn 1 */
+}
 
 /* USER CODE BEGIN 1 */
 
